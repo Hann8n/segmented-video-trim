@@ -18,13 +18,11 @@
 - [Examples](#examples)
 - [Troubleshooting](#troubleshooting)
 
-# React Native Video Trim
+# Segmented Video Trim for React Native
 
 <div align="center">
-  <h2>📱 Professional video trimmer for React Native apps</h2>
-  
-  <img src="images/android.gif" width="300" />
-  <img src="images/ios.gif" width="300" />
+  <h2>📱 Professional segmented video trimmer for React Native apps</h2>
+  <p>Create multiple video segments, manage duration constraints, and build professional video editing workflows</p>
   
   <p>
     <strong>✅ iOS & Android</strong> • 
@@ -35,10 +33,12 @@
 
 ## Overview
 
-A powerful, easy-to-use video and audio trimming library for React Native applications.
+A powerful, easy-to-use segmented video and audio trimming library for React Native applications. Create multiple video segments from different sources, manage them together with duration constraints, and build professional video editing workflows.
 
 ### ✨ Key Features
 
+- **🎬 Segmented Video Editing** - Create and manage multiple video segments from different sources
+- **⏱️ Duration Management** - Set maximum duration limits and track segment usage
 - **📹 Video & Audio Support** - Trim both video and audio files
 - **🌐 Local & Remote Files** - Support for local storage and HTTPS URLs
 - **💾 Multiple Save Options** - Photos, Documents, or Share to other apps
@@ -50,23 +50,20 @@ A powerful, easy-to-use video and audio trimming library for React Native applic
 
 | Feature | Description |
 |---------|-------------|
-| **Trimming** | Precise video/audio trimming with visual controls |
+| **Segmented Trimming** | Create multiple video segments and manage them together |
+| **Duration Tracking** | Monitor total duration, available time, and segment count |
+| **Precise Trimming** | Visual controls for exact start/end time selection |
 | **Validation** | Check if files are valid video/audio before processing |
 | **Save Options** | Photos, Documents, Share sheet integration |
 | **File Management** | Complete file lifecycle management |
 | **Customization** | Extensive UI and behavior customization |
 
-<div align="center">
-  <img src="images/document_picker.png" width="250" />
-  <img src="images/share_sheet.png" width="250" />
-</div>
-
 ## Installation
 
 ```bash
-npm install react-native-video-trim
+npm install segmented-video-trim
 # or
-yarn add react-native-video-trim
+yarn add segmented-video-trim
 ```
 
 ### Platform Setup
@@ -138,14 +135,14 @@ Then rebuild your app. **Note:** Expo Go may not work due to native dependencies
 Get up and running in 3 simple steps:
 
 ```javascript
-import { showEditor } from 'react-native-video-trim';
+import { showEditor } from 'segmented-video-trim';
 
 // 1. Basic usage - open video editor
 showEditor(videoUrl);
 
-// 2. With duration limit
+// 2. With duration limit (for segmented editing)
 showEditor(videoUrl, {
-  maxDuration: 20,
+  maxDuration: 20, // Maximum duration in seconds
 });
 
 // 3. With save options
@@ -156,10 +153,52 @@ showEditor(videoUrl, {
 });
 ```
 
+### Segmented Video Editing
+
+Create multiple video segments and manage them together:
+
+```javascript
+import { showEditor } from 'segmented-video-trim';
+import { SegmentManager } from './utils/SegmentManager';
+
+// Initialize segment manager with max duration
+const segmentManager = new SegmentManager(60); // 60 seconds max
+
+// Add segments from different videos
+const pickAndTrimVideo = async () => {
+  const videoUri = await pickVideoFromGallery();
+  
+  // Get available time for this segment
+  const availableTime = segmentManager.getAvailableTime();
+  
+  // Show editor with dynamic max duration
+  showEditor(videoUri, {
+    maxDuration: availableTime, // Constrain to available time
+    saveToPhoto: false,
+  });
+};
+
+// Handle trimmed segment
+const handleSegmentComplete = ({ outputPath, startTime, endTime }) => {
+  const duration = (endTime - startTime) / 1000; // Convert to seconds
+  const segment = {
+    duration,
+    video: { uri: outputPath },
+  };
+  
+  if (segmentManager.addSegment(segment)) {
+    console.log('Segment added:', {
+      totalDuration: segmentManager.getTotalDuration(),
+      availableTime: segmentManager.getAvailableTime(),
+    });
+  }
+};
+```
+
 ### Complete Example with File Picker
 
 ```javascript
-import { showEditor } from 'react-native-video-trim';
+import { showEditor } from 'segmented-video-trim';
 import { launchImageLibrary } from 'react-native-image-picker';
 
 const trimVideo = () => {
@@ -396,11 +435,6 @@ buildscript {
 
 ### Audio Trimming
 
-<div align="center">
-  <img src="images/audio_android.jpg" width="200" />
-  <img src="images/audio_ios.jpg" width="200" />
-</div>
-
 For audio-only trimming, specify the media type and output format:
 
 ```javascript
@@ -453,11 +487,6 @@ showEditor(videoUrl, {
 
 ### Trimming Progress & Cancellation
 
-<div align="center">
-  <img src="images/progress.jpg" width="200" />
-  <img src="images/cancel_confirm.jpg" width="200" />
-</div>
-
 Users can cancel trimming while in progress:
 
 ```javascript
@@ -469,8 +498,6 @@ showEditor(videoUrl, {
 ```
 
 ### Error Handling
-
-<img src="images/fail_to_load_media.jpg" width="200" />
 
 Handle loading errors gracefully:
 
@@ -485,27 +512,40 @@ showEditor(videoUrl, {
 
 ## Examples
 
-### Complete Implementation (New Architecture)
+### Segmented Video Editing (New Architecture)
 
 ```javascript
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
-import { showEditor, isValidFile, type Spec } from 'react-native-video-trim';
+import { showEditor, isValidFile, type Spec } from 'segmented-video-trim';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { SegmentManager, type Segment } from './utils/SegmentManager';
+import NativeVideoTrim from 'segmented-video-trim';
 
-export default function VideoTrimmer() {
+export default function SegmentedVideoTrimmer() {
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [maxDuration] = useState(60); // 60 seconds max
+  const segmentManagerRef = useRef(new SegmentManager(maxDuration));
   const listeners = useRef({});
 
   useEffect(() => {
     // Set up event listeners
     listeners.current.onFinishTrimming = (NativeVideoTrim as Spec)
-      .onFinishTrimming(({ outputPath, startTime, endTime, duration }) => {
-        console.log('Trimming completed:', {
-          outputPath,
-          startTime,
-          endTime,
-          duration
-        });
+      .onFinishTrimming(({ outputPath, startTime, endTime }) => {
+        const duration = (endTime - startTime) / 1000; // Convert to seconds
+        const segment = {
+          duration,
+          video: { uri: outputPath },
+          sourceType: 'gallery' as const,
+        };
+        
+        if (segmentManagerRef.current.addSegment(segment)) {
+          setSegments(segmentManagerRef.current.getSegments());
+          console.log('Segment added:', {
+            totalDuration: segmentManagerRef.current.getTotalDuration(),
+            availableTime: segmentManagerRef.current.getAvailableTime(),
+          });
+        }
       });
 
     listeners.current.onError = (NativeVideoTrim as Spec)
@@ -514,14 +554,13 @@ export default function VideoTrimmer() {
       });
 
     return () => {
-      // Cleanup listeners
       Object.values(listeners.current).forEach(listener => 
         listener?.remove()
       );
     };
   }, []);
 
-  const selectAndTrimVideo = async () => {
+  const addVideoSegment = async () => {
     const result = await launchImageLibrary({
       mediaType: 'video',
       quality: 1,
@@ -537,29 +576,46 @@ export default function VideoTrimmer() {
         return;
       }
 
-      // Open editor
+      // Get available time for this segment
+      const availableTime = segmentManagerRef.current.getAvailableTime();
+      
+      if (availableTime <= 0) {
+        console.log('No time remaining');
+        return;
+      }
+
+      // Open editor with dynamic max duration
       showEditor(videoUri, {
-        maxDuration: 60000,        // 1 minute max
-        saveToPhoto: true,         // Save to gallery
-        openShareSheetOnFinish: true,
-        headerText: "Trim Video",
+        maxDuration: availableTime, // Constrain to available time
+        saveToPhoto: false,
+        headerText: "Trim Video Segment",
         trimmerColor: "#007AFF",
       });
     }
   };
 
+  const totalDuration = segmentManagerRef.current.getTotalDuration();
+  const availableTime = segmentManagerRef.current.getAvailableTime();
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <View style={{ flex: 1, padding: 20 }}>
+      <Text>Max Duration: {maxDuration}s</Text>
+      <Text>Used: {totalDuration.toFixed(1)}s</Text>
+      <Text>Available: {availableTime.toFixed(1)}s</Text>
+      <Text>Segments: {segments.length}</Text>
+      
       <TouchableOpacity 
-        onPress={selectAndTrimVideo}
+        onPress={addVideoSegment}
+        disabled={availableTime <= 0}
         style={{ 
-          backgroundColor: '#007AFF', 
+          backgroundColor: availableTime > 0 ? '#007AFF' : '#ccc', 
           padding: 15, 
-          borderRadius: 8 
+          borderRadius: 8,
+          marginTop: 20,
         }}
       >
         <Text style={{ color: 'white', fontSize: 16 }}>
-          Select & Trim Video
+          Add Video Segment
         </Text>
       </TouchableOpacity>
     </View>
@@ -572,7 +628,7 @@ export default function VideoTrimmer() {
 ```javascript
 import React, { useEffect } from 'react';
 import { NativeEventEmitter, NativeModules } from 'react-native';
-import { showEditor } from 'react-native-video-trim';
+import { showEditor } from 'segmented-video-trim';
 
 export default function VideoTrimmer() {
   useEffect(() => {

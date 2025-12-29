@@ -11,10 +11,12 @@ import React
 
 extension CMTime {
     var displayString: String {
-        let totalSeconds = seconds
-        let minutes = Int(totalSeconds) / 60
-        let seconds = Int(totalSeconds) % 60
-        let decimal = Int((totalSeconds.truncatingRemainder(dividingBy: 1.0)) * 10)
+        // Round to 1 decimal place to match segments mechanism (toFixed(1))
+        // Use standard rounding (round half up) to match JavaScript's toFixed(1)
+        let roundedSeconds = (seconds * 10).rounded() / 10.0
+        let minutes = Int(roundedSeconds) / 60
+        let seconds = Int(roundedSeconds) % 60
+        let decimal = Int((roundedSeconds.truncatingRemainder(dividingBy: 1.0)) * 10)
         
         if minutes > 0 {
             // Format: "M:SS.D" (no leading zeros on minutes, 1 decimal place)
@@ -55,8 +57,8 @@ class VideoTrimmerViewController: UIViewController {
             }
         }
     }
-    private var maximumDuration: Int?
-    private var minimumDuration: Int?
+    private var maximumDuration: Double?
+    private var minimumDuration: Double?
     // Button text variables kept for API compatibility but not used (icons are used instead)
     private var cancelButtonText = "Cancel"
     private var saveButtonText = "Save"
@@ -655,12 +657,24 @@ class VideoTrimmerViewController: UIViewController {
     }
     
   public func configure(config: NSDictionary) {
-    if let maxDuration = config["maxDuration"] as? Int, maxDuration > 0 {
-      maximumDuration = maxDuration
+    if let maxDurationValue = config["maxDuration"] {
+      if let maxDuration = maxDurationValue as? Double, maxDuration > 0 {
+        maximumDuration = maxDuration
+      } else if let maxDuration = maxDurationValue as? Int, maxDuration > 0 {
+        maximumDuration = Double(maxDuration)
+      } else if let maxDurationNumber = maxDurationValue as? NSNumber, maxDurationNumber.doubleValue > 0 {
+        maximumDuration = maxDurationNumber.doubleValue
+      }
     }
     
-    if let minDuration = config["minDuration"] as? Int, minDuration > 0 {
-      minimumDuration = minDuration
+    if let minDurationValue = config["minDuration"] {
+      if let minDuration = minDurationValue as? Double, minDuration > 0 {
+        minimumDuration = minDuration
+      } else if let minDuration = minDurationValue as? Int, minDuration > 0 {
+        minimumDuration = Double(minDuration)
+      } else if let minDurationNumber = minDurationValue as? NSNumber, minDurationNumber.doubleValue > 0 {
+        minimumDuration = minDurationNumber.doubleValue
+      }
     }
     
     cancelButtonText = config["cancelButtonText"] as? String ?? "Cancel"

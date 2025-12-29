@@ -651,16 +651,17 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
   }
 
   private String formatTime(int milliseconds) {
-    int totalSeconds = milliseconds / 1000;
+    // Round to nearest 100ms (0.1s) to match segments mechanism (toFixed(1))
+    // Use standard rounding (round half up) to match JavaScript's toFixed(1)
+    int roundedMs = (int) Math.round(milliseconds / 100.0) * 100;
+    int totalSeconds = roundedMs / 1000;
     int minutes = totalSeconds / 60;
     int seconds = totalSeconds % 60;
-    int decimal = (milliseconds % 1000) / 100; // First decimal place (tenths)
+    int decimal = (roundedMs % 1000) / 100;
     
     if (minutes > 0) {
-      // Format: "M:SS.D" (no leading zeros on minutes, 1 decimal place)
       return String.format(Locale.getDefault(), "%d:%02d.%d", minutes, seconds, decimal);
     } else {
-      // Format: "S.D" (no leading zeros, 1 decimal place)
       return String.format(Locale.getDefault(), "%d.%d", seconds, decimal);
     }
   }

@@ -53,7 +53,7 @@ function createEditorConfig(
     saveDialogConfirmText: 'Proceed',
     trimmingText: 'Trimming video...',
     fullScreenModalIOS: false,
-    autoplay: false,
+    autoplay: true,
     jumpToPositionOnLoad: -1,
     closeWhenFinish: true,
     enableCancelTrimming: true,

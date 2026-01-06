@@ -66,6 +66,7 @@ class VideoTrimmerViewController: UIViewController {
     var saveBtnClicked: ((CMTimeRange) -> Void)?
     private var enableHapticFeedback = true
     private var zoomOnWaitingDuration: Double = 5.0 // Default: 5 seconds
+    private var autoplay = true
     
     // New color properties
     private var trimmerColor: UIColor = UIColor.systemYellow
@@ -187,6 +188,15 @@ class VideoTrimmerViewController: UIViewController {
     
     @objc private func didEndScrubbing(_ sender: VideoTrimmer) {
         updateLabels()
+        // Resume autoplay after scrubbing if enabled
+        if autoplay {
+            if CMTimeCompare(trimmer.progress, trimmer.selectedRange.end) != -1 {
+                trimmer.progress = trimmer.selectedRange.start
+                seek(to: trimmer.progress)
+            }
+            player.play()
+            setPlayBtnIcon()
+        }
     }
     
     @objc private func progressDidChanged(_ sender: VideoTrimmer) {
@@ -215,6 +225,15 @@ class VideoTrimmerViewController: UIViewController {
         self.trimmer.progress = start ? trimmer.selectedRange.start : trimmer.selectedRange.end
         updateLabels()
         seek(to: trimmer.progress)
+        // Resume autoplay after trimming if enabled
+        if autoplay {
+            if CMTimeCompare(trimmer.progress, trimmer.selectedRange.end) != -1 {
+                trimmer.progress = trimmer.selectedRange.start
+                seek(to: trimmer.progress)
+            }
+            player.play()
+            setPlayBtnIcon()
+        }
     }
     
     // MARK: - UIViewController
@@ -240,8 +259,6 @@ class VideoTrimmerViewController: UIViewController {
             player.removeTimeObserver(token)
             timeObserverToken = nil
         }
-        // Remove observer
-        NotificationCenter.default.removeObserver(self, name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
         
         playerController.player = nil
         playerController.dismiss(animated: false, completion: nil)
@@ -260,7 +277,6 @@ class VideoTrimmerViewController: UIViewController {
                 trimmer.progress = trimmer.selectedRange.start
                 self.seek(to: trimmer.progress)
             }
-            
             player.play()
         }
         
@@ -566,9 +582,6 @@ class VideoTrimmerViewController: UIViewController {
         // Set video gravity to fit within view while maintaining aspect ratio (no cropping)
         playerController.videoGravity = .resizeAspect
         
-        // Add observer for the end of playback
-        NotificationCenter.default.addObserver(self, selector: #selector(playerDidFinishPlaying), name: .AVPlayerItemDidPlayToEndTime, object: player.currentItem)
-        
         // Add tap gesture to video view for play/pause
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(videoViewTapped))
         playerController.view.addGestureRecognizer(tapGesture)
@@ -579,27 +592,29 @@ class VideoTrimmerViewController: UIViewController {
         togglePlay(sender: playBtn)
     }
     
-    @objc private func playerDidFinishPlaying(note: NSNotification) {
-        // Directly set the play icon
-        // the reason in at this time player.timeControlStatus == .playing still returns true
-        playBtn.setImage(self.playIcon, for: .normal)
-    }
-    
     private func setupTimeObserver() {
-        timeObserverToken = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 30), queue: .main) { [weak self] time in
+        // Periodic observer for UI updates and looping check - check more frequently for better looping precision
+        timeObserverToken = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 60), queue: .main) { [weak self] time in
             guard let self = self else { return }
             
             if self.player.timeControlStatus != .playing {
                 return
             }
             
-            self.trimmer.progress = time
-            
-            // pause if reach end of selected range
-            if CMTimeCompare(self.trimmer.progress, trimmer.selectedRange.end) == 1 {
-                player.pause()
-                self.trimmer.progress = trimmer.selectedRange.end
-                self.seek(to: trimmer.selectedRange.end)
+            // Check if we've reached or passed the end of selected range
+            if CMTimeCompare(time, self.trimmer.selectedRange.end) >= 0 {
+                // Immediately loop back to start
+                self.trimmer.progress = self.trimmer.selectedRange.start
+                self.player.seek(to: self.trimmer.selectedRange.start, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+                    guard let self = self else { return }
+                    // Ensure playback continues
+                    if self.player.timeControlStatus != .playing {
+                        self.player.play()
+                    }
+                }
+            } else {
+                // Update progress only if within selected range
+                self.trimmer.progress = time
             }
             
             currentTimeLabel.text = trimmer.selectedRange.duration.displayString
@@ -682,6 +697,7 @@ class VideoTrimmerViewController: UIViewController {
     jumpToPositionOnLoad = config["jumpToPositionOnLoad"] as? Double ?? 0
     enableHapticFeedback = config["enableHapticFeedback"] as? Bool ?? true
     zoomOnWaitingDuration = (config["zoomOnWaitingDuration"] as? Double ?? 5.0) / 1000.0 // convert ms to s
+    autoplay = config["autoplay"] as? Bool ?? true
     headerText = config["headerText"] as? String
     headerTextSize = config["headerTextSize"] as? Int ?? 16
     headerTextColor = config["headerTextColor"] as? Double
@@ -719,6 +735,16 @@ class VideoTrimmerViewController: UIViewController {
                     self.seek(to: cmtime)
                     self.trimmer.progress = cmtime
                     self.currentTimeLabel.text = self.trimmer.selectedRange.duration.displayString
+                }
+                
+                // Auto-play if enabled
+                if self.autoplay {
+                    if CMTimeCompare(self.trimmer.progress, self.trimmer.selectedRange.end) != -1 {
+                        self.trimmer.progress = self.trimmer.selectedRange.start
+                        self.seek(to: self.trimmer.progress)
+                    }
+                    self.player.play()
+                    self.setPlayBtnIcon()
                 }
             }
         }

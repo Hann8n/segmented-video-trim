@@ -91,9 +91,6 @@ class VideoTrimmerThumb: UIView {
     }
     
     private func setup() {
-        leadingView.addSubview(leadingChevronImageView)
-        trailingView.addSubview(trailingChevronView)
-        
         wrapperView.addSubview(leadingView)
         wrapperView.addSubview(trailingView)
         wrapperView.addSubview(topView)
@@ -138,18 +135,6 @@ class VideoTrimmerThumb: UIView {
             bottomView.leadingAnchor.constraint(equalTo: leadingView.trailingAnchor),
             bottomView.trailingAnchor.constraint(equalTo: trailingView.leadingAnchor),
             bottomView.heightAnchor.constraint(equalToConstant: edgeHeight),
-            
-            // Leading Chevron ImageView constraints
-            leadingChevronImageView.topAnchor.constraint(equalTo: leadingView.topAnchor, constant: 8),
-            leadingChevronImageView.bottomAnchor.constraint(equalTo: leadingView.bottomAnchor, constant: -8),
-            leadingChevronImageView.leadingAnchor.constraint(equalTo: leadingView.leadingAnchor, constant: 2),
-            leadingChevronImageView.trailingAnchor.constraint(equalTo: leadingView.trailingAnchor, constant: -2),
-            
-            // Trailing Chevron ImageView constraints
-            trailingChevronView.topAnchor.constraint(equalTo: trailingView.topAnchor, constant: 8),
-            trailingChevronView.bottomAnchor.constraint(equalTo: trailingView.bottomAnchor, constant: -8),
-            trailingChevronView.leadingAnchor.constraint(equalTo: trailingView.leadingAnchor, constant: 2),
-            trailingChevronView.trailingAnchor.constraint(equalTo: trailingView.trailingAnchor, constant: -2),
             
             // Leading Grabber constraints
             leadingGrabber.topAnchor.constraint(equalTo: leadingView.topAnchor),

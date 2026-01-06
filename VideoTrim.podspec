@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   s.private_header_files = "ios/**/*.h"
   s.resources = "ios/Images/*.png"
 
-  s.dependency "ffmpeg-mobile-#{ENV['FFMPEGKIT_PACKAGE'] || 'min'}", ENV['FFMPEGKIT_PACKAGE_VERSION'] || '~> 6.0'
+  s.dependency "ffmpeg-kit-react-native", "~> 6.0"
 
   s.frameworks = 'AVFoundation', 'AVKit', 'UIKit', 'Photos'
 

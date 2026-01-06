@@ -92,6 +92,7 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
   private boolean enableRotation = false;
   private double rotationAngle = 0.0;
   private long zoomOnWaitingDuration = 5000; // Default: 5 seconds (in milliseconds)
+  private boolean autoplay = true;
 
   private Vibrator vibrator;
   private boolean didClampWhilePanning = false;
@@ -323,6 +324,11 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
       seekTo(jumpToPositionOnLoad > mDuration ? mDuration : jumpToPositionOnLoad, true);
     }
 
+    // Auto-play if enabled
+    if (autoplay) {
+      onMediaPlay();
+    }
+
     mOnTrimVideoListener.onLoad(mDuration);
     ignoreSystemGestureForView(trimmerView);
   }
@@ -358,16 +364,23 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
   }
 
   private void mediaCompleted() {
-    onMediaPause();
-
-    // when mediaCompleted is called,  the endTime may not be exactly at the end of the video (can be slightly before), therefore we should seek to exact position on ended
-    seekTo(endTime, true);
+    // Loop: seek back to start time and continue playing
+    seekTo(startTime, true);
+    if (!mediaPlayer.isPlaying()) {
+      mediaPlayer.start();
+      startTimingRunnable();
+    }
   }
 
   private void playOrPause() {
     if (mediaPlayer.isPlaying()) {
       onMediaPause();
     } else {
+      // Loop: if at or past end time, seek back to start
+      int currentPosition = mediaPlayer.getCurrentPosition();
+      if (currentPosition >= endTime) {
+        seekTo(startTime, true);
+      }
       mediaPlayer.start();
       startTimingRunnable();
     }
@@ -380,6 +393,14 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
       mediaPlayer.pause();
     }
     setPlayPauseViewIcon(false);
+  }
+
+  public void onMediaPlay() {
+    if (!mediaPlayer.isPlaying()) {
+      mediaPlayer.start();
+      startTimingRunnable();
+    }
+    setPlayPauseViewIcon(true);
   }
 
   public void setOnTrimVideoListener(VideoTrimListener onTrimVideoListener) {
@@ -519,6 +540,7 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
     alertOnFailCloseText = config.hasKey("alertOnFailCloseText") ? config.getString("alertOnFailCloseText") : "Close";
     enableRotation = config.hasKey("enableRotation") && config.getBoolean("enableRotation");
     rotationAngle = config.hasKey("rotationAngle") ? config.getDouble("rotationAngle") : 0.0;
+    autoplay = config.hasKey("autoplay") ? config.getBoolean("autoplay") : true;
     
     // Configure zoom on waiting duration (in seconds, converted to milliseconds)
     if (config.hasKey("zoomOnWaitingDuration") && config.getDouble("zoomOnWaitingDuration") > 0) {
@@ -571,8 +593,12 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
           int currentPosition = mediaPlayer.getCurrentPosition();
 
           if (currentPosition >= endTime) {
-            onMediaPause();
-            seekTo(endTime, true); // Ensure exact end time display
+            // Loop: seek back to start time and continue playing
+            seekTo(startTime, true);
+            if (!mediaPlayer.isPlaying()) {
+              mediaPlayer.start();
+            }
+            mTimingHandler.postDelayed(this, TIMING_UPDATE_INTERVAL);
           } else {
             updateCurrentTime(true);
             mTimingHandler.postDelayed(this, TIMING_UPDATE_INTERVAL);
@@ -679,6 +705,10 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
           onTrimmerContainerPanned(event);
           break;
         case MotionEvent.ACTION_UP:
+          // Resume autoplay after scrubbing if enabled
+          if (autoplay) {
+            onMediaPlay();
+          }
           view.performClick();
           break;
         default:
@@ -895,6 +925,10 @@ public class VideoTrimmerView extends FrameLayout implements IVideoTrimmerView {
           // Hide start/end time labels when cropping ends
           startTimeText.setVisibility(View.GONE);
           endTimeText.setVisibility(View.GONE);
+          // Resume autoplay after trimming if enabled
+          if (autoplay) {
+            onMediaPlay();
+          }
           view.performClick();
           break;
         default:

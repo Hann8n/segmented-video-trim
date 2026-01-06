@@ -245,10 +245,10 @@ import AVFoundation
     
     // gesture recognizers used. Can be used, for instance, to
     // require a tableview panGestureRecognizer to fail
-    private (set) var leadingGestureRecognizer: UILongPressGestureRecognizer!
-    private (set) var trailingGestureRecognizer: UILongPressGestureRecognizer!
-    private (set) var progressGestureRecognizer: UILongPressGestureRecognizer!
-    private (set) var thumbnailInteractionGestureRecognizer: UILongPressGestureRecognizer!
+    private(set) var leadingGestureRecognizer: UILongPressGestureRecognizer!
+    private(set) var trailingGestureRecognizer: UILongPressGestureRecognizer!
+    private(set) var progressGestureRecognizer: UILongPressGestureRecognizer!
+    private(set) var thumbnailInteractionGestureRecognizer: UILongPressGestureRecognizer!
     
     // private stuff
     private var grabberOffset = CGFloat(0)
@@ -318,10 +318,6 @@ import AVFoundation
         setupGestures()
     }
     
-    //            thumbView.topAnchor.constraint(equalTo: thumbnailWrapperView.topAnchor),
-    //            thumbView.bottomAnchor.constraint(equalTo: thumbnailWrapperView.bottomAnchor),
-    //            thumbView.leadingAnchor.constraint(equalTo: thumbnailWrapperView.leadingAnchor),
-    //            thumbView.trailingAnchor.constraint(equalTo: thumbnailWrapperView.trailingAnchor),
     private func setupConstraints() {
         NSLayoutConstraint.activate([
             thumbnailClipView.topAnchor.constraint(equalTo: self.topAnchor),
